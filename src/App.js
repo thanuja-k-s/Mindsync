@@ -7,9 +7,11 @@ import Journaling from './pages/Journaling';
 import Insights from './pages/Insights';
 import Entries from './pages/Entries';
 import Goals from './pages/Goals';
+import Reminders from './pages/Reminders';
 import Settings from './pages/Settings';
-import Nav from './components/Nav';
+import MemoTalks from './pages/MemoTalks';
 import Sidebar from './components/Sidebar';
+import SidebarToggle from './components/SidebarToggle';
 import './App.css';
 
 function AppInner() {
@@ -21,6 +23,7 @@ function AppInner() {
   return (
       <div className={`App ${showSidebar ? 'layout-content' : ''}`}>
         {showSidebar && <Sidebar />}
+        {showSidebar && <SidebarToggle />}
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
@@ -30,6 +33,8 @@ function AppInner() {
           <Route path="/insights" element={<Insights />} />
           <Route path="/entries" element={<Entries />} />
           <Route path="/goals" element={<Goals />} />
+          <Route path="/reminders" element={<Reminders />} />
+          <Route path="/sage" element={<MemoTalks />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </div>

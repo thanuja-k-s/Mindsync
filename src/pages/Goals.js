@@ -3,14 +3,16 @@ import './Goals.css';
 
 function Goals() {
   const [goals, setGoals] = useState([]);
-  const [reminders, setReminders] = useState([]);
   const [newGoal, setNewGoal] = useState('');
-  const [newReminder, setNewReminder] = useState('');
-  const [reminderDate, setReminderDate] = useState('');
+  const user = localStorage.getItem('user');
 
   useEffect(() => {
-    const savedGoals = localStorage.getItem('goals');
-    const savedReminders = localStorage.getItem('reminders');
+    if (!user) return;
+    
+    const goalsKey = `${user}_goals`;
+    
+    const savedGoals = localStorage.getItem(goalsKey);
+    
     if (savedGoals) {
       const parsedGoals = JSON.parse(savedGoals);
       const updatedGoals = parsedGoals.map(goal => ({
@@ -18,10 +20,9 @@ function Goals() {
         lastCompleted: goal.lastCompleted || null
       }));
       setGoals(updatedGoals);
-      localStorage.setItem('goals', JSON.stringify(updatedGoals));
+      localStorage.setItem(goalsKey, JSON.stringify(updatedGoals));
     }
-    if (savedReminders) setReminders(JSON.parse(savedReminders));
-  }, []);
+  }, [user]);
 
   const addGoal = () => {
     if (newGoal.trim()) {
@@ -35,26 +36,13 @@ function Goals() {
       };
       const updatedGoals = [...goals, goal];
       setGoals(updatedGoals);
-      localStorage.setItem('goals', JSON.stringify(updatedGoals));
+      const goalsKey = `${user}_goals`;
+      localStorage.setItem(goalsKey, JSON.stringify(updatedGoals));
       setNewGoal('');
     }
   };
 
-  const addReminder = () => {
-    if (newReminder.trim() && reminderDate) {
-      const reminder = {
-        id: Date.now(),
-        text: newReminder,
-        date: reminderDate,
-        completed: false
-      };
-      const updatedReminders = [...reminders, reminder];
-      setReminders(updatedReminders);
-      localStorage.setItem('reminders', JSON.stringify(updatedReminders));
-      setNewReminder('');
-      setReminderDate('');
-    }
-  };
+
 
   const updateProgress = (id, progress) => {
     const updatedGoals = goals.map(goal => {
@@ -86,16 +74,11 @@ function Goals() {
       return goal;
     });
     setGoals(updatedGoals);
-    localStorage.setItem('goals', JSON.stringify(updatedGoals));
+    const goalsKey = `${user}_goals`;
+    localStorage.setItem(goalsKey, JSON.stringify(updatedGoals));
   };
 
-  const toggleReminder = (id) => {
-    const updatedReminders = reminders.map(reminder =>
-      reminder.id === id ? { ...reminder, completed: !reminder.completed } : reminder
-    );
-    setReminders(updatedReminders);
-    localStorage.setItem('reminders', JSON.stringify(updatedReminders));
-  };
+
 
   return (
     <div className="goals-container">
@@ -132,41 +115,6 @@ function Goals() {
                 placeholder="Progress %"
               />
               <p>Streak: {goal.streak} days</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="reminders-section">
-        <h2>Reminders</h2>
-        <div className="add-reminder">
-          <textarea
-            className="reminder-text"
-            value={newReminder}
-            onChange={(e) => setNewReminder(e.target.value)}
-            placeholder="Describe your reminder (details, steps, notes)..."
-            rows={4}
-          />
-          <div className="reminder-controls">
-            <input
-              type="datetime-local"
-              value={reminderDate}
-              onChange={(e) => setReminderDate(e.target.value)}
-            />
-            <button onClick={addReminder}>Add Reminder</button>
-          </div>
-        </div>
-
-        <div className="reminders-list">
-          {reminders.map(reminder => (
-            <div key={reminder.id} className={`reminder-item ${reminder.completed ? 'completed' : ''}`}>
-              <input
-                type="checkbox"
-                checked={reminder.completed}
-                onChange={() => toggleReminder(reminder.id)}
-              />
-              <span style={{flex:1}}>{reminder.text}</span>
-              <span>{new Date(reminder.date).toLocaleString()}</span>
             </div>
           ))}
         </div>

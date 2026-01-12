@@ -1,5 +1,5 @@
 /* Global base (paired with styles/theme.css) */
-body { margin:0; font-family:'Inter','Segoe UI',Tahoma,Geneva,Verdana,sans-serif; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; background:#0a0a0a; color:#e8eaed; line-height:1.6; }
+body { margin:0; font-family:'Lora',serif; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; background:#0a0a0a; color:#e8eaed; line-height:1.6; }
 code { font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace; }
 * { box-sizing: border-box; }
 
@@ -14,7 +14,7 @@ h2 { font-size:2rem; border-bottom:1px solid #232329; padding-bottom:12px; }
 h3 { font-size:1.5rem; color:#d6dae2; }
 
 /* Utilities */
-.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap:24px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap:32px; }
 .flex { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
 .flex-column { display:flex; flex-direction:column; gap:12px; }
 .section { margin-bottom:40px; }

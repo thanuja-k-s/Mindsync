@@ -1,12 +1,13 @@
 /* Minimal dark landing styles */
 :root { --bg:#0a0a0a; --panel:#1a1a1a; --line:#262626; --text:#e6e8eb; --muted:#9aa3ad; --gold:#d4af37; }
 html { scroll-behavior:smooth; }
-.landing { background:var(--bg); color:var(--text); min-height:100vh; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+.landing { background:var(--bg); color:var(--text); min-height:100vh; font-family: 'Poppins', sans-serif; }
 .container { width:min(1100px,92%); margin-inline:auto; }
 
 .landing-header { position:sticky; top:0; z-index:40; background:rgba(10,10,10,.7); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
 .header-inner { display:flex; align-items:center; justify-content:space-between; height:64px; }
-.brand { font-weight:800; letter-spacing:.2px; }
+.brand { font-weight:800; letter-spacing:.2px; display: flex; align-items: center; gap: 8px; }
+.brand-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
 .menu { display:flex; gap:10px; }
 
 .btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:10px; text-decoration:none; font-weight:700; }

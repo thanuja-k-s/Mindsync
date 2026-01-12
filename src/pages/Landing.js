@@ -7,7 +7,10 @@ export default function Landing() {
     <div className="landing">
       <header className="landing-header">
         <div className="container header-inner">
-          <div className="brand">🧠 MindSync</div>
+          <div className="brand">
+            <img src="/mindsync-logo.png" alt="MindSync Logo" className="brand-logo" />
+            <span>MindSync</span>
+          </div>
           <nav className="menu">
             <Link to="/auth" className="btn ghost">Login</Link>
             <Link to="/signup" className="btn cta">Sign Up</Link>

@@ -35,7 +35,7 @@ export default function Entries() {
     <div className="main-content">
       <div className="page-container">
         <h1>📚 All Entries</h1>
-        <div className="form" style={{marginBottom:'12px'}}>
+        <div className="form" style={{marginBottom:'20px'}}>
           <input
             type="text"
             placeholder="Search entries by text or tag..."
@@ -47,16 +47,16 @@ export default function Entries() {
         {filtered.length === 0 ? (
           <p className="muted">No matching entries.</p>
         ) : (
-          <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))'}}>
+          <div className="grid">
             {filtered.map((e) => (
               <article key={e.id} className="card">
-                <div className="flex" style={{justifyContent:'space-between'}}>
+                <div className="flex" style={{justifyContent:'space-between', marginBottom:'12px'}}>
                   <small className="muted">{new Date(e.date).toLocaleString()}</small>
                   <span className={`badge ${e.sentiment}`}>{e.sentiment}</span>
                 </div>
-                <p style={{marginTop:'8px'}}>{e.text}</p>
+                <p style={{marginTop:'12px', marginBottom:'16px', lineHeight:'1.6'}}>{e.text}</p>
                 {e.files?.length > 0 && (
-                  <div className="grid" style={{gridTemplateColumns:'repeat(2,1fr)', gap:'8px', marginTop:'8px'}}>
+                  <div className="grid" style={{gridTemplateColumns:'repeat(2,1fr)', gap:'12px', marginBottom:'16px'}}>
                     {e.files.map((f, idx) => (
                       <div key={idx} className="media" style={{borderRadius:'10px', overflow:'hidden'}}>
                         {f.type?.startsWith('image/') ? (
@@ -71,7 +71,7 @@ export default function Entries() {
                   </div>
                 )}
                 {e.tags?.length > 0 && (
-                  <div className="flex" style={{marginTop:'8px'}}>
+                  <div className="flex" style={{marginTop:'12px', gap:'8px', flexWrap:'wrap'}}>
                     {e.tags.map((t, i) => (
                       <span key={i} className="badge" style={{fontWeight:700}}>{t}</span>
                     ))}

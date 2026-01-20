@@ -1,36 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import CryptoJS from 'crypto-js';
 import './Settings.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
 const Settings = () => {
-  const [currentUser, setCurrentUser] = useState('');
-  const [userData, setUserData] = useState({ email: '', name: '' });
+  const [userData, setUserData] = useState({ username: '', email: '' });
   const [editMode, setEditMode] = useState(null);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState({ username: '', email: '' });
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const userId = localStorage.getItem('userId');
+  const authToken = localStorage.getItem('authToken');
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    setCurrentUser(user);
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    if (users[user]) {
-      setUserData({
-        email: users[user].email || '',
-        name: users[user].name || user,
-      });
-      setFormData({
-        email: users[user].email || '',
-        name: users[user].name || user,
-      });
+    if (!userId) {
+      setMessage('User data not found');
+      setLoading(false);
+      return;
     }
-  }, []);
+
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/profile/${userId}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserData({
+            username: data.username || '',
+            email: data.email || ''
+          });
+          setFormData({
+            username: data.username || '',
+            email: data.email || ''
+          });
+        } else {
+          setMessage('Failed to load user profile');
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setMessage('Error loading profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [userId, authToken]);
 
   const logout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userId');
     window.location.href = '/';
   };
 
@@ -47,21 +76,43 @@ const Settings = () => {
     setConfirmPassword('');
   };
 
-  const handleSaveName = () => {
-    if (!formData.name.trim()) {
-      setMessage('Name cannot be empty');
+  const handleSaveUsername = async () => {
+    if (!formData.username.trim()) {
+      setMessage('Username cannot be empty');
       return;
     }
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    users[currentUser].name = formData.name;
-    localStorage.setItem('users', JSON.stringify(users));
-    setUserData({ ...userData, name: formData.name });
-    setEditMode(null);
-    setMessage('✓ Name updated successfully');
-    setTimeout(() => setMessage(''), 3000);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/profile/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ username: formData.username })
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setUserData({
+          username: updated.username,
+          email: updated.email
+        });
+        setEditMode(null);
+        setMessage('✓ Username updated successfully');
+        localStorage.setItem('username', updated.username);
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        const error = await response.json();
+        setMessage(error.error || 'Failed to update username');
+      }
+    } catch (err) {
+      console.error('Error updating username:', err);
+      setMessage('Error updating username');
+    }
   };
 
-  const handleSaveEmail = () => {
+  const handleSaveEmail = async () => {
     if (!formData.email.trim()) {
       setMessage('Email cannot be empty');
       return;
@@ -71,52 +122,44 @@ const Settings = () => {
       setMessage('Invalid email format');
       return;
     }
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    users[currentUser].email = formData.email;
-    localStorage.setItem('users', JSON.stringify(users));
-    setUserData({ ...userData, email: formData.email });
-    setEditMode(null);
-    setMessage('✓ Email updated successfully');
-    setTimeout(() => setMessage(''), 3000);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/profile/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ email: formData.email })
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setUserData({
+          username: updated.username,
+          email: updated.email
+        });
+        setEditMode(null);
+        setMessage('✓ Email updated successfully');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        const error = await response.json();
+        setMessage(error.error || 'Failed to update email');
+      }
+    } catch (err) {
+      console.error('Error updating email:', err);
+      setMessage('Error updating email');
+    }
   };
 
-  const handleChangePassword = () => {
-    if (!currentPassword) {
-      setMessage('Current password is required');
-      return;
-    }
-    if (!newPassword) {
-      setMessage('New password is required');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setMessage('Passwords do not match');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setMessage('Password must be at least 6 characters');
-      return;
-    }
-
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    const hashed = CryptoJS.SHA256(currentUser + ':' + currentPassword).toString();
-
-    if (users[currentUser].hash !== hashed) {
-      setMessage('Current password is incorrect');
-      return;
-    }
-
-    const newHash = CryptoJS.SHA256(currentUser + ':' + newPassword).toString();
-    users[currentUser].hash = newHash;
-    localStorage.setItem('users', JSON.stringify(users));
-
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setEditMode(null);
-    setMessage('✓ Password changed successfully');
-    setTimeout(() => setMessage(''), 3000);
-  };
+  if (loading) {
+    return (
+      <div className="settings-container">
+        <h2>Settings</h2>
+        <p style={{ textAlign: 'center', color: '#9ca3af' }}>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-container">
@@ -135,24 +178,24 @@ const Settings = () => {
       <div className="settings-section">
         <div className="setting-item">
           <div className="setting-label">
-            <label>Name</label>
-            <span className="setting-value">{userData.name}</span>
+            <label>Username</label>
+            <span className="setting-value">{userData.username}</span>
           </div>
-          {editMode === 'name' ? (
+          {editMode === 'username' ? (
             <div className="setting-edit">
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter your name"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                placeholder="Enter your username"
               />
               <div className="button-group">
-                <button onClick={handleSaveName} className="btn-save">Save</button>
+                <button onClick={handleSaveUsername} className="btn-save">Save</button>
                 <button onClick={handleCancel} className="btn-cancel">Cancel</button>
               </div>
             </div>
           ) : (
-            <button onClick={() => handleEditClick('name')} className="btn-edit">Edit</button>
+            <button onClick={() => handleEditClick('username')} className="btn-edit">Edit</button>
           )}
         </div>
 
@@ -178,68 +221,10 @@ const Settings = () => {
             <button onClick={() => handleEditClick('email')} className="btn-edit">Edit</button>
           )}
         </div>
-
-        <div className="setting-item">
-          <div className="setting-label">
-            <label>Password</label>
-            <span className="setting-value">••••••••</span>
-          </div>
-          {editMode === 'password' ? (
-            <div className="setting-edit">
-              <label className="password-field">
-                <span>Current Password</span>
-                <div className="password-wrap">
-                  <input
-                    type={showPasswords ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                  />
-                </div>
-              </label>
-              <label className="password-field">
-                <span>New Password</span>
-                <div className="password-wrap">
-                  <input
-                    type={showPasswords ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                  />
-                </div>
-              </label>
-              <label className="password-field">
-                <span>Confirm Password</span>
-                <div className="password-wrap">
-                  <input
-                    type={showPasswords ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                  />
-                  <button
-                    type="button"
-                    className="eye"
-                    onClick={() => setShowPasswords((s) => !s)}
-                    aria-label="Toggle password visibility"
-                  >
-                    {showPasswords ? '🙈' : '👁️'}
-                  </button>
-                </div>
-              </label>
-              <div className="button-group">
-                <button onClick={handleChangePassword} className="btn-save">Change Password</button>
-                <button onClick={handleCancel} className="btn-cancel">Cancel</button>
-              </div>
-            </div>
-          ) : (
-            <button onClick={() => handleEditClick('password')} className="btn-edit">Change</button>
-          )}
-        </div>
       </div>
 
       <div className="settings-footer">
-        <p>Privacy: All data is encrypted and stored locally.</p>
+        <p>Privacy: All data is encrypted and stored securely in our database.</p>
         <button onClick={logout} className="btn-logout">Logout</button>
       </div>
     </div>

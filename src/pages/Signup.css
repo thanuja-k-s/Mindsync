@@ -30,6 +30,10 @@
 .btn-cta{ display:block; margin-top:6px; width:100%; padding:14px 16px; border-radius:12px; border:none; color:#0a0a0a; font-weight:800; background: linear-gradient(135deg,var(--gold2),var(--gold)); box-shadow:0 14px 32px rgba(240,193,75,.25); cursor:pointer; transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; }
 .btn-cta:hover{ transform: translateY(-2px); box-shadow:0 18px 40px rgba(240,193,75,.35); filter: saturate(1.04); }
 
+.btn-google{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:14px 16px; margin-top:12px; margin-bottom:15px; border-radius:12px; border:1.5px solid var(--line); background: rgba(240,193,75,.08); color:var(--text); font-weight:600; font-size:15px; cursor:pointer; transition: all .2s ease; }
+.btn-google:hover{ background: rgba(240,193,75,.15); border-color: rgba(240,193,75,.5); box-shadow: 0 8px 20px rgba(240,193,75,.15); transform: translateY(-2px); }
+.btn-google:disabled{ opacity:.6; cursor:not-allowed; }
+
 .error{ background: rgba(232,93,117,.1); border:1px solid rgba(232,93,117,.35); color:#ffcdd6; padding:10px 12px; border-radius:10px; font-size:.95rem; }
 
 .foot{ text-align:center; color:var(--muted); margin-top:14px; }

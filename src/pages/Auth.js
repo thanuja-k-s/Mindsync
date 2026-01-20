@@ -141,24 +141,10 @@ const Auth = () => {
           <button 
             className="btn-google" 
             onClick={handleGoogleSignIn}
-            style={{
-              width: '100%',
-              padding: '10px',
-              marginBottom: '15px',
-              backgroundColor: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
+            disabled={loading}
           >
-            <span style={{ fontSize: '18px' }}>🔐</span>
-            Sign in with Google
+            <span>🔐</span>
+            {loading ? 'Signing in...' : 'Continue with Google'}
           </button>
         </div>
         <p className="foot">Don't have an account? <Link to="/signup">Sign up</Link></p>

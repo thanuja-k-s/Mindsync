@@ -1,6 +1,8 @@
  import React, { useState, useRef, useEffect } from 'react';
 import './MemoTalks.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
 const MemoTalks = () => {
   const [messages, setMessages] = useState([
     {
@@ -147,8 +149,8 @@ ${entriesContext}`
 
       const prompt = `You are MemoTalks, an empathetic AI companion who has read the user's journal. Use the journal context to answer the user's question concisely (2-3 sentences). Be supportive, non-judgmental, and reference the user's experiences when relevant.\n\nJournal Context:\n${snippet}\n\nUser Question: ${userQuestion}\n\nAnswer:`;
 
-      // Determine endpoint: direct HF (client) if hfKey set, else proxyUrl or default '/api/hf'
-      let endpoint = '/api/hf';
+      // Determine endpoint: direct HF (client) if hfKey set, else proxyUrl or default backend
+      let endpoint = `${API_URL}/api/hf`;
       const useDirect = hfKey && hfKey.length > 0;
       if (proxyUrl && proxyUrl.length > 0 && !useDirect) {
         endpoint = proxyUrl.replace(/\/+$/, '') + '/api/hf';

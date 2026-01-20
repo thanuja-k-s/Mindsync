@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import CryptoJS from 'crypto-js';
 import './Signup.css';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 export default function Signup() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ username: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -24,40 +26,68 @@ export default function Signup() {
     return { pct, label };
   }, [form.password]);
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     const username = form.username.trim();
+    const email = form.email.trim();
     const password = form.password;
     const confirm = form.confirm;
 
-    if (!username || !password || !confirm) {
+    if (!username || !email || !password || !confirm) {
       setError('Please fill all fields.');
+      setLoading(false);
       return;
     }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
+    }
+    
     if (password.length < 6) {
       setError('Password should be at least 6 characters.');
+      setLoading(false);
       return;
     }
     if (password !== confirm) {
       setError('Passwords do not match.');
+      setLoading(false);
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    if (users[username]) {
-      setError('Username already exists. Try logging in.');
-      return;
+    try {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.error || 'Signup failed');
+        setLoading(false);
+        return;
+      }
+
+      // Store token and user info
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('userId', data.user.id);
+      localStorage.setItem('username', data.user.username);
+      localStorage.setItem('user', data.user.username);
+      
+      navigate('/journal');
+    } catch (err) {
+      setError('Error: Unable to connect to server. Make sure backend is running on port 5001.');
+      console.error('Signup error:', err);
     }
-
-    const hash = CryptoJS.SHA256(username + ':' + password).toString();
-    users[username] = { hash, createdAt: new Date().toISOString() };
-    localStorage.setItem('users', JSON.stringify(users));
-
-    // Auto-login
-    localStorage.setItem('user', username);
-    navigate('/journal');
+    setLoading(false);
   };
 
   return (
@@ -78,6 +108,18 @@ export default function Signup() {
               placeholder="e.g. alex"
               autoComplete="username"
               value={form.username}
+              onChange={onChange}
+              required
+            />
+          </label>
+          <label className="field">
+            <span>Email</span>
+            <input
+              type="email"
+              name="email"
+              placeholder="e.g. alex@example.com"
+              autoComplete="email"
+              value={form.email}
               onChange={onChange}
               required
             />
@@ -116,7 +158,9 @@ export default function Signup() {
             />
           </label>
           {error && <div className="error">{error}</div>}
-          <button type="submit" className="btn-cta">Create account</button>
+          <button type="submit" className="btn-cta" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create account'}
+          </button>
         </form>
         <p className="foot">
           Already have an account? <Link to="/auth">Log in</Link>

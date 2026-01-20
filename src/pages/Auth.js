@@ -1,66 +1,94 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import CryptoJS from 'crypto-js';
 import './Signup.css';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const Auth = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const login = () => {
-    if (!username || !password) return;
-
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    const record = users[username];
-    const hashed = CryptoJS.SHA256(username + ':' + password).toString();
-    if (record && record.hash === hashed) {
-      localStorage.setItem('user', username);
-      navigate('/journal');
-    } else {
-      alert('Invalid credentials. Please try again or sign up.');
+  const login = async () => {
+    if (!username || !password) {
+      setError('Please enter username and password.');
+      return;
     }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setError(data.error || 'Login failed');
+        setLoading(false);
+        return;
+      }
+
+      // Store token and user info
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('userId', data.user.id);
+      localStorage.setItem('username', data.user.username);
+      localStorage.setItem('user', data.user.username);
+      
+      navigate('/journal');
+    } catch (err) {
+      setError('Error: Unable to connect to server. Make sure backend is running on port 5001.');
+      console.error('Login error:', err);
+    }
+    setLoading(false);
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     // Simulated Google Sign-In - In production, use actual Google OAuth
     const googleEmail = prompt('Enter your email for Google Sign-In:');
     if (!googleEmail) return;
 
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
-    
-    // Check if user exists with this email
-    let existingUser = null;
-    for (const user in users) {
-      if (users[user].email === googleEmail) {
-        existingUser = user;
-        break;
-      }
-    }
+    setLoading(true);
+    setError('');
 
-    if (existingUser) {
-      // User exists, log them in
-      localStorage.setItem('user', existingUser);
-      navigate('/journal');
-    } else {
-      // New user, create account
+    try {
+      // Generate random username from email
       const newUsername = googleEmail.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
       const tempPassword = Math.random().toString(36).substr(2, 12);
-      const hashed = CryptoJS.SHA256(newUsername + ':' + tempPassword).toString();
+
+      // Try to sign up
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newUsername, email: googleEmail, password: tempPassword })
+      });
+
+      const data = await response.json();
       
-      users[newUsername] = {
-        hash: hashed,
-        email: googleEmail,
-        name: googleEmail.split('@')[0],
-        googleAuth: true
-      };
-      
-      localStorage.setItem('users', JSON.stringify(users));
-      localStorage.setItem('user', newUsername);
-      alert(`Welcome! Your account has been created with username: ${newUsername}`);
-      navigate('/journal');
+      if (response.ok) {
+        // New user created successfully
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('username', data.user.username);
+        localStorage.setItem('user', data.user.username);
+        alert(`Welcome! Your account has been created with username: ${data.user.username}`);
+        navigate('/journal');
+      } else {
+        // User exists or other error
+        setError(data.error || 'Google Sign-In failed');
+      }
+    } catch (err) {
+      setError('Error: Unable to connect to server.');
+      console.error('Google Sign-In error:', err);
     }
+    setLoading(false);
   };
 
   return (
@@ -103,7 +131,10 @@ const Auth = () => {
               </button>
             </div>
           </label>
-          <button className="btn-cta" onClick={login}>Log in</button>
+          {error && <div className="error" style={{marginBottom: '15px'}}>{error}</div>}
+          <button className="btn-cta" onClick={login} disabled={loading}>
+            {loading ? 'Logging in...' : 'Log in'}
+          </button>
           <div className="divider" style={{ textAlign: 'center', margin: '20px 0', color: '#888' }}>
             or
           </div>

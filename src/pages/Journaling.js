@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import CryptoJS from 'crypto-js';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const Journaling = () => {
   const [entry, setEntry] = useState('');
@@ -9,6 +10,7 @@ const Journaling = () => {
   const [transcription, setTranscription] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState('');
+  const [error, setError] = useState('');
   const recognitionRef = useRef(null);
   const navigate = useNavigate();
 
@@ -46,76 +48,108 @@ const Journaling = () => {
   };
 
   const saveEntry = async () => {
+    const userId = localStorage.getItem('userId');
     const user = localStorage.getItem('user');
-    if (!user) return;
+    
+    if (!userId || !user) {
+      setError('Please log in first');
+      return;
+    }
+
+    if (!entry.trim()) {
+      setError('Please write something before saving');
+      return;
+    }
 
     setSaving(true);
+    setError('');
 
-    // Convert files to data URLs for storage
-    const fileObjs = await Promise.all(
-      files.map(
-        (f) =>
-          new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () =>
-              resolve({
-                name: f.name,
-                type: f.type,
-                size: f.size,
-                dataUrl: reader.result,
-              });
-            reader.readAsDataURL(f);
-          })
-      )
-    );
+    try {
+      // Convert files to data URLs for storage
+      const fileObjs = await Promise.all(
+        files.map(
+          (f) =>
+            new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () =>
+                resolve({
+                  name: f.name,
+                  type: f.type,
+                  size: f.size,
+                  dataUrl: reader.result,
+                });
+              reader.readAsDataURL(f);
+            })
+        )
+      );
 
-    const newEntry = {
-      id: Date.now(),
-      text: entry,
-      files: fileObjs,
-      date: new Date().toISOString(),
-      tags: generateTags(entry),
-      sentiment: analyzeSentiment(entry)
-    };
+      // Separate images from other files
+      const images = fileObjs.filter(f => f.type.startsWith('image/'));
+      const otherFiles = fileObjs.filter(f => !f.type.startsWith('image/'));
 
-    // Encrypt and store
-    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(newEntry), 'secret-key').toString();
-    const entries = JSON.parse(localStorage.getItem(`${user}_entries`) || '[]');
-    entries.push(encrypted);
-    localStorage.setItem(`${user}_entries`, JSON.stringify(entries));
+      const entryData = {
+        userId,
+        content: entry,
+        images,
+        files: otherFiles,
+        tags: generateTags(entry),
+        mood: analyzeSentiment(entry),
+        sentiment: analyzeSentiment(entry)
+      };
 
-    // Reset form
-    setEntry('');
-    setFiles([]);
-    setTranscription('');
-    setSaving(false);
-    setSavedMsg('Entry saved successfully!');
-    setTimeout(() => setSavedMsg(''), 2000);
-    // Navigate to entries page to view the saved item
-    setTimeout(() => navigate('/entries'), 500);
+      // Send to backend API
+      const response = await fetch(`${API_URL}/api/entries`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify(entryData)
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save entry');
+      }
+
+      // Reset form
+      setEntry('');
+      setFiles([]);
+      setTranscription('');
+      setSaving(false);
+      setSavedMsg('Entry saved successfully!');
+      setTimeout(() => setSavedMsg(''), 2000);
+      // Navigate to entries page to view the saved item
+      setTimeout(() => navigate('/entries'), 500);
+    } catch (err) {
+      setError(err.message || 'Error saving entry. Make sure backend is running.');
+      console.error('Save entry error:', err);
+      setSaving(false);
+    }
   };
 
   const generateTags = (text) => {
     // Mock keyword extraction
-    const words = text.toLowerCase().split(' ');
+    const words = text.toLowerCase().split(/\s+/);
     return words.filter(w => w.length > 3).slice(0, 5);
   };
 
   const analyzeSentiment = (text) => {
     // Mock sentiment analysis
-    const positiveWords = ['happy', 'good', 'great', 'awesome'];
-    const negativeWords = ['sad', 'bad', 'terrible', 'awful'];
-    const words = text.toLowerCase().split(' ');
+    const positiveWords = ['happy', 'good', 'great', 'awesome', 'love', 'wonderful', 'amazing'];
+    const negativeWords = ['sad', 'bad', 'terrible', 'awful', 'hate', 'horrible', 'disgusting'];
+    const words = text.toLowerCase().split(/\s+/);
     const positiveCount = words.filter(w => positiveWords.includes(w)).length;
     const negativeCount = words.filter(w => negativeWords.includes(w)).length;
-    if (positiveCount > negativeCount) return 'positive';
-    if (negativeCount > positiveCount) return 'negative';
+    if (positiveCount > negativeCount) return 'happy';
+    if (negativeCount > positiveCount) return 'sad';
     return 'neutral';
   };
 
   return (
     <div className="journaling-container page-container">
       <h2>New Entry</h2>
+      {error && <div className="error" style={{marginBottom:'15px'}}>{error}</div>}
       <textarea
         value={entry}
         onChange={(e) => setEntry(e.target.value)}

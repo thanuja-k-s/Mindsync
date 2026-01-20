@@ -1,12 +1,28 @@
 require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const fetch = require('node-fetch');
 const cors = require('cors');
 
+// Import routes
+const authRoutes = require('./routes/auth');
+const entriesRoutes = require('./routes/entries');
+const goalsRoutes = require('./routes/goals');
+const remindersRoutes = require('./routes/reminders');
+
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mindsync';
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✓ Connected to MongoDB'))
+  .catch(err => console.error('✗ MongoDB connection error:', err));
+
+// Hugging Face Configuration
 const HF_MODEL = process.env.HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.1';
 const HF_KEY = process.env.HF_API_KEY;
 
@@ -14,6 +30,18 @@ if (!HF_KEY) {
   console.warn('Warning: HF_API_KEY not set. Set it in .env before running server.');
 }
 
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: 'MindSync backend is running' });
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/entries', entriesRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/reminders', remindersRoutes);
+
+// Hugging Face Proxy
 app.post('/api/hf', async (req, res) => {
   try {
     const { prompt, parameters } = req.body;
@@ -41,4 +69,4 @@ app.post('/api/hf', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => console.log(`HF proxy listening on port ${PORT}`));
+app.listen(PORT, () => console.log(`✓ MindSync backend listening on port ${PORT}`));

@@ -1,48 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import CryptoJS from 'crypto-js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const Insights = () => {
   const [entries, setEntries] = useState([]);
   const [moodData, setMoodData] = useState({});
   const [summary, setSummary] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (!user) return;
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
-    const encryptedEntries = JSON.parse(localStorage.getItem(`${user}_entries`) || '[]');
-    const decryptedEntries = encryptedEntries.map(e => {
+    const fetchEntries = async () => {
       try {
-        const bytes = CryptoJS.AES.decrypt(e, 'secret-key');
-        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-      } catch {
-        return null;
+        const response = await fetch(`${API_URL}/api/entries/user/${userId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const entriesData = Array.isArray(data) ? data : data.entries || [];
+          setEntries(entriesData);
+
+          // Process mood data
+          const moods = {};
+          entriesData.forEach(entry => {
+            const date = new Date(entry.createdAt).toDateString();
+            moods[date] = moods[date] || { positive: 0, negative: 0, neutral: 0 };
+            const mood = entry.mood || 'neutral';
+            const sentiment = mood === 'happy' || mood === 'excited' || mood === 'calm' ? 'positive' 
+                            : mood === 'sad' || mood === 'anxious' ? 'negative' 
+                            : 'neutral';
+            moods[date][sentiment]++;
+          });
+          setMoodData(moods);
+
+          // Generate summary
+          const totalEntries = entriesData.length;
+          const avgSentiment = entriesData.reduce((acc, e) => {
+            const mood = e.mood || 'neutral';
+            if (mood === 'happy' || mood === 'excited' || mood === 'calm') return acc + 1;
+            if (mood === 'sad' || mood === 'anxious') return acc - 1;
+            return acc;
+          }, 0) / (totalEntries || 1);
+          setSummary(`You have ${totalEntries} entries. Average mood: ${avgSentiment > 0 ? 'Positive' : avgSentiment < 0 ? 'Negative' : 'Neutral'}`);
+        }
+      } catch (err) {
+        console.error('Error fetching entries:', err);
+      } finally {
+        setLoading(false);
       }
-    }).filter(e => e);
+    };
 
-    setEntries(decryptedEntries);
-
-    // Process mood data
-    const moods = {};
-    decryptedEntries.forEach(entry => {
-      const date = new Date(entry.date).toDateString();
-      moods[date] = moods[date] || { positive: 0, negative: 0, neutral: 0 };
-      moods[date][entry.sentiment]++;
-    });
-    setMoodData(moods);
-
-    // Generate summary
-    const totalEntries = decryptedEntries.length;
-    const avgSentiment = decryptedEntries.reduce((acc, e) => {
-      if (e.sentiment === 'positive') return acc + 1;
-      if (e.sentiment === 'negative') return acc - 1;
-      return acc;
-    }, 0) / totalEntries;
-    setSummary(`You have ${totalEntries} entries. Average mood: ${avgSentiment > 0 ? 'Positive' : avgSentiment < 0 ? 'Negative' : 'Neutral'}`);
+    fetchEntries();
   }, []);
 
   const generateRecommendations = (slice, days) => {
@@ -53,13 +73,22 @@ const Insights = () => {
     const recentEntries = slice.slice(-5);
     
     slice.forEach(e => {
-      moodCounts[e.sentiment] = (moodCounts[e.sentiment] || 0) + 1;
+      const mood = e.mood || 'neutral';
+      const sentiment = mood === 'happy' || mood === 'excited' || mood === 'calm' ? 'positive' 
+                      : mood === 'sad' || mood === 'anxious' ? 'negative' 
+                      : 'neutral';
+      moodCounts[sentiment] = (moodCounts[sentiment] || 0) + 1;
       (e.tags || []).forEach(t => { tagCount[t] = (tagCount[t] || 0) + 1; });
-      daysActive.add(new Date(e.date).toDateString());
+      daysActive.add(new Date(e.createdAt).toDateString());
     });
 
     // Check recent negative streak
-    const recentMoods = recentEntries.map(e => e.sentiment);
+    const recentMoods = recentEntries.map(e => {
+      const mood = e.mood || 'neutral';
+      return mood === 'happy' || mood === 'excited' || mood === 'calm' ? 'positive' 
+           : mood === 'sad' || mood === 'anxious' ? 'negative' 
+           : 'neutral';
+    });
     const negativeStreak = recentMoods.filter(m => m === 'negative').length;
     const positiveStreak = recentMoods.filter(m => m === 'positive').length;
 
@@ -109,15 +138,19 @@ const Insights = () => {
   const summarize = (days) => {
     const since = new Date();
     since.setDate(since.getDate() - days);
-    const slice = entries.filter(e => new Date(e.date) >= since);
+    const slice = entries.filter(e => new Date(e.createdAt) >= since);
     const total = slice.length;
     const moodCounts = { positive:0, negative:0, neutral:0 };
     const tagCount = {};
     const daysActive = new Set();
     slice.forEach(e => {
-      moodCounts[e.sentiment] = (moodCounts[e.sentiment]||0) + 1;
+      const mood = e.mood || 'neutral';
+      const sentiment = mood === 'happy' || mood === 'excited' || mood === 'calm' ? 'positive' 
+                      : mood === 'sad' || mood === 'anxious' ? 'negative' 
+                      : 'neutral';
+      moodCounts[sentiment] = (moodCounts[sentiment]||0) + 1;
       (e.tags||[]).forEach(t => { tagCount[t] = (tagCount[t]||0)+1; });
-      daysActive.add(new Date(e.date).toDateString());
+      daysActive.add(new Date(e.createdAt).toDateString());
     });
     const predominant = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'neutral';
     const topTag = Object.entries(tagCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'reflection';
@@ -125,29 +158,72 @@ const Insights = () => {
     return { total, predominant, topTag, activeDays: daysActive.size, recommendations, moodCounts };
   };
 
+  if (loading) {
+    return (
+      <div className="main-content">
+        <div className="page-container">
+          <h1>📊 Insights</h1>
+          <p style={{ textAlign: 'center', color: '#9ca3af' }}>Loading insights...</p>
+        </div>
+      </div>
+    );
+  }
+
   const weekly = summarize(7);
   const monthly = summarize(30);
 
+  const getMoodEmoji = (mood) => {
+    const moodMap = {
+      happy: '😊',
+      sad: '😔',
+      anxious: '😰',
+      calm: '😌',
+      excited: '🤩',
+      neutral: '😐'
+    };
+    return moodMap[mood] || '📝';
+  };
+
+  const getMoodSentiment = (mood) => {
+    if (mood === 'happy' || mood === 'excited' || mood === 'calm') return 'positive';
+    if (mood === 'sad' || mood === 'anxious') return 'negative';
+    return 'neutral';
+  };
+
   const moodChartData = {
-    labels: Object.keys(moodData),
+    labels: Object.keys(moodData).slice(-30), // Last 30 days
     datasets: [
       {
         label: 'Positive',
-        data: Object.values(moodData).map(d => d.positive),
+        data: Object.values(moodData).slice(-30).map(d => d.positive),
         backgroundColor: 'rgba(75, 192, 192, 0.6)',
       },
       {
         label: 'Negative',
-        data: Object.values(moodData).map(d => d.negative),
+        data: Object.values(moodData).slice(-30).map(d => d.negative),
         backgroundColor: 'rgba(255, 99, 132, 0.6)',
       },
       {
         label: 'Neutral',
-        data: Object.values(moodData).map(d => d.neutral),
+        data: Object.values(moodData).slice(-30).map(d => d.neutral),
         backgroundColor: 'rgba(255, 206, 86, 0.6)',
       },
     ],
   };
+
+  if (entries.length === 0) {
+    return (
+      <div className="main-content">
+        <div className="page-container">
+          <h1>📊 Insights</h1>
+          <div className="section" style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div style={{ fontSize: '56px', marginBottom: '24px' }}>📭</div>
+            <p style={{ fontSize: '18px', color: '#9ca3af' }}>No entries yet. Start journaling to see insights!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="main-content">
@@ -176,29 +252,25 @@ const Insights = () => {
             <div className="section-icon">💭</div>
             <h3>Recent Reflections</h3>
           </div>
-          {entries.slice(-5).length === 0 ? (
+          {entries.length === 0 ? (
             <p>No entries yet. Start journaling to see insights!</p>
           ) : (
-            entries.slice(-5).map(entry => (
-              <div key={entry.id} className="card">
-                <p>{entry.text.substring(0, 150)}...</p>
-                {entry.files && entry.files.length > 0 && (
+            entries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5).map(entry => (
+              <div key={entry._id} className="card">
+                <p>{entry.content.substring(0, 150)}...</p>
+                {entry.images && entry.images.length > 0 && (
                   <div className="grid" style={{gridTemplateColumns:'repeat(3,1fr)', gap:'8px'}}>
-                    {entry.files.slice(0,3).map((f, i) => (
+                    {entry.images.slice(0,3).map((f, i) => (
                       <div key={i} className="media" style={{borderRadius:'10px', overflow:'hidden'}}>
-                        {f.type?.startsWith('image/') ? (
-                          <img alt={f.name} src={f.dataUrl} style={{width:'100%', height:'120px', objectFit:'cover'}} />
-                        ) : f.type?.startsWith('video/') ? (
-                          <video src={f.dataUrl} style={{width:'100%', height:'120px', objectFit:'cover'}} />
-                        ) : null}
+                        <img alt={f.name} src={f.dataUrl} style={{width:'100%', height:'120px', objectFit:'cover'}} />
                       </div>
                     ))}
                   </div>
                 )}
                 <div className="flex">
-                  <small>{new Date(entry.date).toLocaleDateString()}</small>
-                  <span className={`badge ${entry.sentiment}`}>
-                    {entry.sentiment.charAt(0).toUpperCase() + entry.sentiment.slice(1)}
+                  <small>{new Date(entry.createdAt).toLocaleDateString()}</small>
+                  <span className={`badge ${getMoodSentiment(entry.mood || 'neutral')}`}>
+                    {getMoodEmoji(entry.mood || 'neutral')} {entry.mood}
                   </span>
                 </div>
               </div>

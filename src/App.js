@@ -10,33 +10,35 @@ import Goals from './pages/Goals';
 import Reminders from './pages/Reminders';
 import Settings from './pages/Settings';
 import MemoTalks from './pages/MemoTalks';
-import Sidebar from './components/Sidebar';
-import SidebarToggle from './components/SidebarToggle';
+import Header from './components/Header';
+import Footer from './components/Footer';
 import './App.css';
 
 function AppInner() {
   const isLoggedIn = localStorage.getItem('user');
   const location = useLocation();
   const hideSidebarOn = ['/', '/auth', '/signup'];
-  const showSidebar = isLoggedIn && !hideSidebarOn.includes(location.pathname);
+  const showNav = isLoggedIn && !hideSidebarOn.includes(location.pathname);
 
   return (
-      <div className={`App ${showSidebar ? 'layout-content' : ''}`}>
-        {showSidebar && <Sidebar />}
-        {showSidebar && <SidebarToggle />}
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/journal" element={<Journaling />} />
-          <Route path="/journaling" element={<Journaling />} />
-          <Route path="/insights" element={<Insights />} />
-          <Route path="/entries" element={<Entries />} />
-          <Route path="/goals" element={<Goals />} />
-          <Route path="/reminders" element={<Reminders />} />
-          <Route path="/sage" element={<MemoTalks />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
+      <div className={`App ${showNav ? 'with-header-footer' : ''}`}>
+        {showNav && <Header />}
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/journal" element={<Journaling />} />
+            <Route path="/journaling" element={<Journaling />} />
+            <Route path="/insights" element={<Insights />} />
+            <Route path="/entries" element={<Entries />} />
+            <Route path="/goals" element={<Goals />} />
+            <Route path="/reminders" element={<Reminders />} />
+            <Route path="/sage" element={<MemoTalks />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </main>
+        {showNav && <Footer />}
       </div>
   );
 }

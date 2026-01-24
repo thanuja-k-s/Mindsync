@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Entry = require('../models/Entry');
 const User = require('../models/User');
+const { indexEntry, deleteEntryIndex } = require('../utils/ragService');
 
 // Helper function to calculate and update streak
 const updateUserStreak = async (userId) => {
@@ -118,6 +119,24 @@ router.post('/', async (req, res) => {
     });
     await entry.save();
     
+    // Get user's username for RAG indexing
+    let ragUserId = userId;
+    try {
+      const user = await User.findById(userId);
+      if (user && user.username) {
+        ragUserId = user.username; // Use username for RAG queries
+      }
+    } catch (e) {
+      console.log('Could not fetch username, using userId:', userId);
+    }
+    
+    // Index entry into RAG system with username
+    await indexEntry(ragUserId, entry._id, content, { 
+      date: entry.createdAt,
+      mood: mood || 'neutral',
+      tags: tags || []
+    });
+    
     // Update user streak
     await updateUserStreak(userId);
     
@@ -175,6 +194,25 @@ router.put('/:entryId', async (req, res) => {
     if (!entry) {
       return res.status(404).json({ error: 'Entry not found' });
     }
+    
+    // Re-index entry in RAG system with updated content
+    if (entry.userId) {
+      let ragUserId = entry.userId;
+      try {
+        const user = await User.findById(entry.userId);
+        if (user && user.username) {
+          ragUserId = user.username;
+        }
+      } catch (e) {
+        console.log('Could not fetch username for update, using userId:', entry.userId);
+      }
+      await indexEntry(ragUserId, entry._id, content, { 
+        date: entry.createdAt,
+        mood: mood || 'neutral',
+        tags: tags || []
+      });
+    }
+    
     res.json(entry);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -189,8 +227,20 @@ router.delete('/:entryId', async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
     
-    // Update streak after deleting an entry
+    // Remove entry from RAG index
     if (entry.userId) {
+      let ragUserId = entry.userId;
+      try {
+        const user = await User.findById(entry.userId);
+        if (user && user.username) {
+          ragUserId = user.username;
+        }
+      } catch (e) {
+        console.log('Could not fetch username for delete, using userId:', entry.userId);
+      }
+      await deleteEntryIndex(ragUserId, entry._id);
+      
+      // Update streak after deleting an entry
       await updateUserStreak(entry.userId);
     }
     

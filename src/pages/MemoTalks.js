@@ -1,7 +1,7 @@
  import React, { useState, useRef, useEffect } from 'react';
 import './MemoTalks.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
 
 const MemoTalks = () => {
   const [messages, setMessages] = useState([
@@ -14,12 +14,9 @@ const MemoTalks = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [userEntries, setUserEntries] = useState([]);
-  const apiKeyLocal = localStorage.getItem('memotalks_api_key') || '';
-  const proxyUrlLocal = localStorage.getItem('memotalks_hf_proxy') || '';
-  const hfKeyLocal = localStorage.getItem('memotalks_hf_key') || '';
-  const [proxyUrl, setProxyUrl] = useState(proxyUrlLocal);
-  const [hfKey, setHfKey] = useState(hfKeyLocal);
-  const [showSettings, setShowSettings] = useState(false);
+  
+  // Get userId from localStorage
+  const userId = localStorage.getItem('userId');
   const messagesEndRef = useRef(null);
 
   // Load all user journal entries on component mount
@@ -48,162 +45,42 @@ const MemoTalks = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Generate truly dynamic response using AI API
+  // Generate response using RAG API
   const generateAIResponse = async (userQuestion) => {
     try {
-      // Format user's journal entries as context
-      const entriesContext = userEntries.length > 0 
-        ? `User's Journal Entries:\n${userEntries.map((entry, idx) => 
-            `Entry ${idx + 1} (${new Date(entry.date).toLocaleDateString()}): ${entry.text}`
-          ).join('\n\n')}`
-        : 'No journal entries available yet.';
-
-      // Try OpenAI API if key is available (client-stored - optional/risky)
-      if (apiKeyLocal) {
-        return await generateWithOpenAI(userQuestion, entriesContext);
+      if (!userId) {
+        console.warn('No userId found, using fallback');
+        return generateFallbackResponse(userQuestion);
       }
 
-      // Fallback: Use Hugging Face API (free, no key needed for inference)
-      return await generateWithHuggingFace(userQuestion, entriesContext);
-    } catch (error) {
-      console.error('Error generating response:', error);
-      return generateFallbackResponse(userQuestion);
-    }
-  };
+      console.log('Calling RAG API with userId:', userId, 'query:', userQuestion);
 
-  // Settings handlers: save proxy URL and optional client HF key
-  const saveSettings = () => {
-    try {
-      if (proxyUrl && proxyUrl.length > 0) localStorage.setItem('memotalks_hf_proxy', proxyUrl);
-      else localStorage.removeItem('memotalks_hf_proxy');
-
-      if (hfKey && hfKey.length > 0) localStorage.setItem('memotalks_hf_key', hfKey);
-      else localStorage.removeItem('memotalks_hf_key');
-
-      alert('MemoTalks settings saved.');
-      setShowSettings(false);
-    } catch (err) {
-      console.error('Error saving settings', err);
-      alert('Unable to save settings. Check console for details.');
-    }
-  };
-
-  const resetSettings = () => {
-    setProxyUrl('');
-    setHfKey('');
-    localStorage.removeItem('memotalks_hf_proxy');
-    localStorage.removeItem('memotalks_hf_key');
-    alert('MemoTalks settings reset to defaults.');
-    setShowSettings(false);
-  };
-
-  // Generate response using OpenAI API
-  const generateWithOpenAI = async (userQuestion, entriesContext) => {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKeyLocal}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: `You are MemoTalks, a compassionate AI companion who has read the user's journal entries. Your role is to:
-1. Answer questions based on the user's journal content and personal context
-2. Provide personalized insights about their life, goals, and feelings
-3. Be empathetic, supportive, and non-judgmental
-4. Keep responses concise (2-3 sentences)
-5. Use appropriate emojis
-6. Reference their actual experiences when relevant
-7. If asked something not in their journal, provide general supportive guidance based on their patterns
-
-${entriesContext}`
-          },
-          {
-            role: 'user',
-            content: userQuestion
-          }
-        ],
-        temperature: 0.9,
-        max_tokens: 250
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('OpenAI API Error');
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  };
-
-  // Generate response using Hugging Face via local proxy (/api/hf)
-  const generateWithHuggingFace = async (userQuestion, entriesContext) => {
-    try {
-      // Build concise prompt, truncate entries if needed
-      const maxEntries = 10;
-      const entriesList = userEntries.slice(-maxEntries).map((entry, idx) => `Entry ${userEntries.length - maxEntries + idx + 1}: ${entry.text}`);
-      const snippet = entriesList.join('\n\n');
-
-      const prompt = `You are MemoTalks, an empathetic AI companion who has read the user's journal. Use the journal context to answer the user's question concisely (2-3 sentences). Be supportive, non-judgmental, and reference the user's experiences when relevant.\n\nJournal Context:\n${snippet}\n\nUser Question: ${userQuestion}\n\nAnswer:`;
-
-      // Determine endpoint: direct HF (client) if hfKey set, else proxyUrl or default backend
-      let endpoint = `${API_URL}/api/hf`;
-      const useDirect = hfKey && hfKey.length > 0;
-      if (proxyUrl && proxyUrl.length > 0 && !useDirect) {
-        endpoint = proxyUrl.replace(/\/+$/, '') + '/api/hf';
-      }
-
-      // If using direct client HF key, call HF inference endpoint directly
-      if (useDirect) {
-        const hfEndpoint = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1';
-        const respDirect = await fetch(hfEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${hfKey}` },
-          body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: 300, temperature: 0.9 } })
-        });
-        if (!respDirect.ok) {
-          const t = await respDirect.text();
-          throw new Error(`HF direct error: ${respDirect.status} ${t}`);
-        }
-        const dataDirect = await respDirect.json();
-        let responseTextDirect = '';
-        if (Array.isArray(dataDirect) && dataDirect[0]?.generated_text) responseTextDirect = dataDirect[0].generated_text;
-        else if (dataDirect.generated_text) responseTextDirect = dataDirect.generated_text;
-        else responseTextDirect = JSON.stringify(dataDirect);
-        responseTextDirect = responseTextDirect.replace(prompt, '').trim();
-        return responseTextDirect || "I appreciate your question. Let's explore this together based on what you've shared. 💙";
-      }
-
-      // Call local proxy which forwards to Hugging Face (keeps key server-side)
-      const resp = await fetch(endpoint, {
+      // Call RAG API endpoint
+      const response = await fetch(`${API_URL}/api/rag/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, parameters: { max_new_tokens: 300, temperature: 0.9 } })
+        body: JSON.stringify({
+          userId: userId,
+          query: userQuestion
+        })
       });
 
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(`Proxy Error: ${resp.status} ${text}`);
+      console.log('RAG API Response status:', response.status);
+
+      if (!response.ok) {
+        console.error(`RAG API Error: ${response.status}`);
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+        throw new Error(`RAG API Error: ${response.status}`);
       }
 
-      const data = await resp.json();
-      // Extract generated text from common HF shapes
-      let responseText = '';
-      if (Array.isArray(data) && data[0]?.generated_text) responseText = data[0].generated_text;
-      else if (data.generated_text) responseText = data.generated_text;
-      else if (data[0] && data[0].generated_text) responseText = data[0].generated_text;
-      else responseText = JSON.stringify(data);
-
-      // Cleanup: remove echoed prompt if present
-      responseText = responseText.replace(prompt, '').trim();
-      if (!responseText) responseText = "I appreciate your question. Let's explore this together based on what you've shared. 💙";
-      return responseText;
+      const data = await response.json();
+      console.log('RAG Response:', data);
+      return data.response || generateFallbackResponse(userQuestion);
     } catch (error) {
-      console.error('Hugging Face (proxy) Error:', error);
-      throw error;
+      console.error('Error generating RAG response:', error);
+      console.log('Falling back to local response generation');
+      return generateFallbackResponse(userQuestion);
     }
   };
 
@@ -339,39 +216,10 @@ ${entriesContext}`
           </div>
           <p className="memotalks-intro">I've read all your journal entries and understand your journey. Ask me anything about your life, goals, feelings, or progress. Every response is personalized based on your actual experiences.</p>
           <div className="memotalks-settings-toggle">
-            <button className="settings-button" onClick={() => setShowSettings(!showSettings)}>
-              ⚙️ Settings
-            </button>
+            {/* Settings removed - using local RAG model */}
           </div>
-          {showSettings && (
-            <div className="memotalks-settings">
-              <div className="settings-row">
-                <label>HF Proxy URL (recommended)</label>
-                <input
-                  type="text"
-                  value={proxyUrl}
-                  onChange={(e) => setProxyUrl(e.target.value)}
-                  placeholder="http://localhost:3002"
-                />
-              </div>
-              <div className="settings-row">
-                <label>Direct Hugging Face API Key (optional)</label>
-                <input
-                  type="password"
-                  value={hfKey}
-                  onChange={(e) => setHfKey(e.target.value)}
-                  placeholder="hf_xxx (only if you understand the risks)"
-                />
-              </div>
-              <p className="settings-warning">Security: Storing an API key in the browser exposes it to others. Use a server-side proxy when possible.</p>
-              <div className="settings-actions">
-                <button className="save-settings" onClick={saveSettings}>Save</button>
-                <button className="reset-settings" onClick={resetSettings}>Reset</button>
-              </div>
-            </div>
-          )}
           {userEntries.length > 0 && (
-            <p className="memotalks-info">📚 Analyzing {userEntries.length} journal entry(ies) for you...</p>
+            <p className="memotalks-info">✨ RAG AI ready - personalized responses based on your {userEntries.length} journal entry(ies)</p>
           )}
         </div>
 

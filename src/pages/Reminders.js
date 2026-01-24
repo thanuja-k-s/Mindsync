@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Reminders.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
 
 function Reminders() {
   const [reminders, setReminders] = useState([]);
@@ -190,7 +190,9 @@ function Reminders() {
   if (loading) {
     return (
       <div className="reminders-page">
-        <h1>⏰ Reminders</h1>
+        <div className="reminders-heading-wrapper">
+          <h1><span className="reminders-emoji">⏰</span> Reminders</h1>
+        </div>
         <p style={{ textAlign: 'center', color: '#9ca3af' }}>Loading reminders...</p>
       </div>
     );
@@ -198,7 +200,9 @@ function Reminders() {
 
   return (
     <div className="reminders-page">
-      <h1>⏰ Reminders</h1>
+      <div className="reminders-heading-wrapper">
+        <h1><span className="reminders-emoji">⏰</span> Reminders</h1>
+      </div>
 
       {/* Active Alarm Popup */}
       {activeAlarm && (

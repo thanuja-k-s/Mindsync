@@ -1,13 +1,17 @@
 /* Header Styles */
 .header {
   background: linear-gradient(135deg, #0a0e27 0%, #141829 50%, #0f1a2e 100%);
-  border-bottom: 1px solid rgba(100, 200, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
   padding: 0.45rem 1.5rem;
   overflow: hidden;
+  box-shadow: 
+    0 1px 0 rgba(0, 212, 255, 0.1),
+    0 2px 8px rgba(0, 212, 255, 0.05),
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    inset 0 -1px 2px rgba(0, 212, 255, 0.08);
 }
 
 .header-content {

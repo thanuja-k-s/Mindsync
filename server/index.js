@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const entriesRoutes = require('./routes/entries');
 const goalsRoutes = require('./routes/goals');
 const remindersRoutes = require('./routes/reminders');
+const ragRoutes = require('./routes/rag');
 
 const app = express();
 app.use(cors());
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/entries', entriesRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/reminders', remindersRoutes);
+app.use('/api/rag', ragRoutes);
 
 // Hugging Face Proxy
 app.post('/api/hf', async (req, res) => {

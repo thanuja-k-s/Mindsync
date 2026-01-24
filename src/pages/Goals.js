@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Goals.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
 
 function Goals() {
   const [goals, setGoals] = useState([]);
@@ -144,7 +144,7 @@ function Goals() {
 
   return (
     <div className="goals-page">
-      <h1>🎯 Goals & Habits</h1>
+      <h1><span className="goals-title-emoji">🎯</span> Goals & Habits</h1>
 
       {/* Add New Goal Section */}
       <div className="goals-section">

@@ -2,13 +2,13 @@
   max-width: 600px;
   margin: 40px auto;
   padding: 30px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .settings-container h2 {
-  color: #333;
+  color: #e0e0e0;
   margin-bottom: 30px;
   text-align: center;
 }
@@ -40,14 +40,15 @@
 }
 
 .setting-item {
-  background: white;
+  background: #252d47;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   display: grid;
   grid-template-columns: 120px 1fr auto;
   align-items: center;
   gap: 20px;
+  border: 1px solid #3a4460;
 }
 
 .setting-label {
@@ -57,13 +58,13 @@
 .setting-label label {
   display: block;
   font-weight: 600;
-  color: #333;
+  color: #e0e0e0;
   margin-bottom: 8px;
 }
 
 .setting-value {
   display: block;
-  color: #666;
+  color: #a0a0b0;
   font-size: 13px;
   margin-top: 0;
 }
@@ -96,16 +97,19 @@
 .setting-edit input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #3a4460;
   border-radius: 5px;
   font-size: 14px;
   box-sizing: border-box;
+  background: #1a2138;
+  color: #e0e0e0;
 }
 
 .setting-edit input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+  border-color: #0088ff;
+  box-shadow: 0 0 5px rgba(0, 136, 255, 0.5);
+  background: #202a40;
 }
 
 .password-field {
@@ -116,7 +120,7 @@
 .password-field span {
   display: block;
   font-weight: 500;
-  color: #333;
+  color: #e0e0e0;
   margin-bottom: 5px;
   font-size: 14px;
 }
@@ -130,16 +134,19 @@
 .password-wrap input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #3a4460;
   border-radius: 5px;
   font-size: 14px;
   padding-right: 40px;
+  background: #1a2138;
+  color: #e0e0e0;
 }
 
 .password-wrap input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+  border-color: #0088ff;
+  box-shadow: 0 0 5px rgba(0, 136, 255, 0.5);
+  background: #202a40;
 }
 
 .eye {
@@ -195,11 +202,11 @@
 .settings-footer {
   text-align: center;
   padding-top: 20px;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid #3a4460;
 }
 
 .settings-footer p {
-  color: #666;
+  color: #a0a0b0;
   font-size: 14px;
   margin-bottom: 15px;
 }

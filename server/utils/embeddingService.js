@@ -162,7 +162,7 @@ function findSimilar(queryEmbedding, embeddings, topK = 5) {
   return similarities
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, topK)
-    .filter(item => item.similarity > 0.15); // Slightly higher threshold for better filtering
+    .filter(item => item.similarity > 0.08); // Lowered threshold to match actual similarity scores
 }
 
 module.exports = {

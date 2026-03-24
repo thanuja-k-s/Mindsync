@@ -1,5 +1,5 @@
 const RAGIndex = require('../models/RAGIndex');
-const { generateEmbedding, findSimilar, extractKeywords, KEYWORD_GROUPS } = require('./embeddingService');
+const { generateEmbedding, cosineSimilarity, findSimilar, extractKeywords, KEYWORD_GROUPS } = require('./embeddingService');
 
 /**
  * RAG Service - Retrieval-Augmented Generation
@@ -107,37 +107,51 @@ async function retrieveContext(userId, query, topK = 5) {
       return [];
     }
     
-    // Find similar entries using embeddings
-    let similarEntries = findSimilar(queryEmbedding, allEntries, topK * 2); // Get extra to filter
+    // First, get similarity scores for all entries and filter by threshold
+    let scoredEntries = allEntries.map(item => ({
+      ...item,
+      similarity: cosineSimilarity(queryEmbedding, item.embedding)
+    }));
     
-    // Add keyword match scoring
-    similarEntries = similarEntries.map(entry => ({
+    // Filter by similarity threshold
+    const similarityThreshold = 0.08;
+    scoredEntries = scoredEntries.filter(item => item.similarity > similarityThreshold);
+    
+    if (scoredEntries.length === 0) {
+      console.log('No entries passed similarity threshold');
+      return [];
+    }
+    
+    console.log(`Entries above similarity threshold (${similarityThreshold}): ${scoredEntries.length}`);
+    
+    // Now add keyword match scoring to all filtered entries
+    scoredEntries = scoredEntries.map(entry => ({
       ...entry,
       keywordMatch: calculateKeywordMatchScore(query, entry.text)
     }));
     
+    // Calculate adaptive weights based on ALL remaining entries
+    const maxKeywordScore = Math.max(...scoredEntries.map(e => e.keywordMatch));
+    let weightKeyword = 0.3; // Default: 30% keywords, 70% similarity
+    let weightSimilarity = 0.7;
+    
+    if (maxKeywordScore > 3) {
+      // Strong keyword matches detected - heavily prioritize keywords
+      weightKeyword = 0.75; // 75% keywords, 25% similarity
+      weightSimilarity = 0.25;
+    }
+    
+    // Apply adaptive scoring to all entries
+    scoredEntries = scoredEntries.map(entry => ({
+      ...entry,
+      finalScore: (entry.similarity * weightSimilarity) + (entry.keywordMatch * weightKeyword)
+    }));
+    
     // Re-sort by adaptive scoring
-    // If strong keyword matches exist, weight them more heavily
-    similarEntries.sort((a, b) => {
-      const maxKeywordScore = Math.max(...similarEntries.map(e => e.keywordMatch));
-      
-      // Adaptive weighting: if keyword scores are high, give them more weight
-      let weightKeyword = 0.3; // Default: 30% keywords, 70% similarity
-      let weightSimilarity = 0.7;
-      
-      if (maxKeywordScore > 3) {
-        // Strong keyword matches detected - heavily prioritize keywords
-        weightKeyword = 0.75; // 75% keywords, 25% similarity
-        weightSimilarity = 0.25;
-      }
-      
-      const scoreA = (a.similarity * weightSimilarity) + (a.keywordMatch * weightKeyword);
-      const scoreB = (b.similarity * weightSimilarity) + (b.keywordMatch * weightKeyword);
-      return scoreB - scoreA;
-    });
+    scoredEntries.sort((a, b) => b.finalScore - a.finalScore);
     
     // Take top K after re-scoring
-    similarEntries = similarEntries.slice(0, topK);
+    let similarEntries = scoredEntries.slice(0, topK);
     
     console.log(`Found ${similarEntries.length} similar entries with improved matching`);
     similarEntries.forEach(entry => {
